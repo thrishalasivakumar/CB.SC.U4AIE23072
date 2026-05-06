@@ -505,6 +505,85 @@ SELECT DISTINCT studentID
 FROM notifications
 WHERE notificationType = 'Placement'
 AND createdAt >= NOW() - INTERVAL '7 days';
+
+
+# Stage 4
+
+Fetching notifications on every page load increases database traffic and causes unnecessary repeated queries. As the number of users grows, this can overload the database and increase API response time.
+
+To improve performance, I would use the following approaches.
+
+---
+
+# 1. Redis Caching
+
+Unread notifications can be temporarily stored in Redis so that repeated requests do not always hit the database.
+
+Advantages:
+- very fast reads
+- reduces DB load
+- improves response time
+
+Tradeoff:
+- cache invalidation becomes slightly complex
+
+---
+
+# 2. WebSockets
+
+Instead of repeatedly fetching notifications, the server can push notifications in real time using WebSockets.
+
+Advantages:
+- real-time updates
+- fewer API requests
+- better user experience
+
+Tradeoff:
+- maintaining persistent connections requires additional server resources
+
+---
+
+# 3. Pagination
+
+Instead of loading all notifications at once:
+
+```http
+GET /notifications?page=1&limit=10
+```
+
+Advantages:
+- smaller payload size
+- faster queries
+- lower memory usage
+
+Tradeoff:
+- frontend must handle pagination logic
+
+---
+
+# 4. Background Processing
+
+Notification generation and delivery can be moved to background workers using queues like RabbitMQ or Kafka.
+
+Advantages:
+- improves scalability
+- reduces API processing time
+- handles bulk notifications efficiently
+
+Tradeoff:
+- additional infrastructure complexity
+
+---
+
+# Recommended Approach
+
+A combination of:
+- Redis caching
+- WebSockets
+- pagination
+- background workers
+
+would provide the best scalability and performance for the notification platform.
 ```
 
 
