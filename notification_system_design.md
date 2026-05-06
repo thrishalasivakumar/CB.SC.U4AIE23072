@@ -1,6 +1,6 @@
-# Stage 1
-
 # Campus Notification System Design
+
+# Stage 1
 
 ## Objective
 
@@ -662,3 +662,34 @@ worker_process(notification):
 Saving notifications to the database should happen first because the notification must be stored reliably even if the email service fails temporarily.
 
 Email delivery can happen asynchronously using background workers.
+
+# Stage 6
+
+To implement the Priority Inbox feature, notifications are ranked based on:
+- notification type priority
+- recency
+
+Priority order used:
+
+```txt
+Placement > Result > Event
+```
+
+Weights assigned:
+- Placement = 3
+- Result = 2
+- Event = 1
+
+I used a heap-based approach to efficiently maintain the top 10 notifications.
+
+As new notifications arrive:
+- they are pushed into the heap
+- the lowest priority notification is removed if heap size exceeds 10
+
+This approach is efficient because heap operations take:
+
+```txt
+O(log n) time complexity.
+```
+
+The implementation fetches notifications from the provided API, calculates priority scores using notification weight and timestamp, and displays the top 10 highest priority unread notifications.
