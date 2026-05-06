@@ -584,6 +584,81 @@ A combination of:
 - background workers
 
 would provide the best scalability and performance for the notification platform.
+
+
+# Stage 5
+
+The current implementation has several problems when handling notifications for 50,000 students.
+
+## Problems In Current Approach
+
+- Notifications are processed sequentially, making the process very slow.
+- If the email API fails midway, some students may never receive notifications.
+- DB operations and email sending are tightly coupled.
+- A single failure can interrupt the entire flow.
+- The system is not scalable for large traffic spikes.
+
+For example, if `send_email()` fails for 200 students midway, there is no retry mechanism and those students may miss the notification completely.
+
+---
+
+# Improved Design
+
+I would redesign the system using:
+- message queues
+- background workers
+- retry mechanisms
+- asynchronous processing
+
+The API should only queue notification jobs, while workers process them independently.
+
+This improves:
+- scalability
+- fault tolerance
+- reliability
+- performance
+
+---
+
+# Revised Pseudocode
+
+```python
+function notify_all(student_ids, message):
+
+    for student_id in student_ids:
+
+        queue.publish({
+            "student_id": student_id,
+            "message": message
+        })
+
+
+worker_process(notification):
+
+    try:
+
+        save_to_db(
+            notification.student_id,
+            notification.message
+        )
+
+        send_email(
+            notification.student_id,
+            notification.message
+        )
+
+        push_to_app(
+            notification.student_id,
+            notification.message
+        )
+
+    except Exception:
+
+        retry_queue.publish(notification)
 ```
 
+---
 
+Saving notifications to the database should happen first because the notification must be stored reliably even if the email service fails temporarily.
+
+Email delivery can happen asynchronously using background workers.
