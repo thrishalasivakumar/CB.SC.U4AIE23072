@@ -432,11 +432,79 @@ VALUES (
 );
 ```
 
----
 
 ## Delete Notification
 
 ```sql
+
 DELETE FROM notifications
+
 WHERE id = 'notification-id';
+
 ```
+
+---
+
+# Stage 3
+
+The query is accurate because it correctly fetches unread notifications for a particular student and sorts them by latest notifications.
+
+```sql
+SELECT * FROM notifications
+WHERE studentID = 1042 AND isRead = false
+ORDER BY createdAt DESC;
+```
+
+However, the query becomes slow when the database grows to millions of notifications because the database may perform large table scans and sorting operations.
+
+The main issue is the absence of a proper index for the filtering and sorting columns.
+
+I would improve the query performance by adding a composite index:
+
+```sql
+CREATE INDEX idx_notifications_student_read_created
+ON notifications(studentID, isRead, createdAt DESC);
+```
+
+This helps the database quickly filter unread notifications for a student and return them in sorted order.
+
+Without indexing, the computation cost can approach:
+
+```txt
+O(n log n)
+```
+
+because of filtering and sorting large datasets.
+
+With indexing, the query becomes significantly faster and closer to:
+
+```txt
+O(log n)
+```
+
+---
+
+Adding indexes on every column is not a good idea.
+
+Too many indexes:
+- increase storage usage
+- slow down INSERT and UPDATE operations
+- increase maintenance overhead
+
+Indexes should only be added on columns that are frequently:
+- filtered
+- sorted
+- used in joins
+
+---
+
+# Query To Find Students Who Received Placement Notifications In Last 7 Days
+
+```sql
+SELECT DISTINCT studentID
+FROM notifications
+WHERE notificationType = 'Placement'
+AND createdAt >= NOW() - INTERVAL '7 days';
+```
+
+
