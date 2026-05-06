@@ -291,3 +291,152 @@ Advantages:
 - Efficient server-client communication
 
 ---
+
+# Stage 2
+
+## Persistent Storage Choice
+
+I would use PostgreSQL for storing notifications because the data is structured and relational. It supports indexing, filtering, sorting, pagination and handles large-scale data efficiently.
+
+It is reliable and suitable for production systems where notification data consistency is important.
+
+---
+
+# Database Schema
+
+## Students Table
+
+```sql
+CREATE TABLE students (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100) UNIQUE
+);
+```
+
+---
+
+## Notifications Table
+
+```sql
+CREATE TYPE notification_type AS ENUM (
+    'Placement',
+    'Result',
+    'Event'
+);
+
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY,
+    studentId INTEGER REFERENCES students(id),
+    notificationType notification_type,
+    message TEXT,
+    isRead BOOLEAN DEFAULT FALSE,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+# Problems As Data Grows
+
+As notifications increase:
+- queries may become slow
+- sorting takes more time
+- DB load increases
+- fetching unread notifications becomes expensive
+- can slow down APIs.
+
+---
+
+# Solutions
+
+## Indexing
+
+```sql
+CREATE INDEX idx_notifications
+ON notifications(studentId, isRead, createdAt DESC);
+```
+
+This improves unread notification queries.
+
+---
+
+## Pagination
+
+Instead of loading all notifications we can use this to limit the response size
+
+---
+
+## Redis Caching
+
+Unread notifications can be cached to reduce repeated DB reads.
+
+---
+
+## Archiving Old Notifications
+
+Older notifications can be moved to archive tables to keep active tables smaller.
+
+---
+
+# Queries Based On APIs
+
+## Fetch Notifications
+
+```sql
+SELECT *
+FROM notifications
+WHERE studentId = 1042
+ORDER BY createdAt DESC
+LIMIT 10 OFFSET 0;
+```
+
+---
+
+## Fetch Unread Notifications
+
+```sql
+SELECT *
+FROM notifications
+WHERE studentId = 1042
+AND isRead = FALSE
+ORDER BY createdAt DESC;
+```
+
+---
+
+## Mark Notification As Read
+
+```sql
+UPDATE notifications
+SET isRead = TRUE
+WHERE id = 'notification-id';
+```
+
+---
+
+## Send Notification
+
+```sql
+INSERT INTO notifications (
+    id,
+    studentId,
+    notificationType,
+    message
+)
+VALUES (
+    gen_random_uuid(),
+    1042,
+    'Placement',
+    'Google hiring for SDE roles'
+);
+```
+
+---
+
+## Delete Notification
+
+```sql
+DELETE FROM notifications
+WHERE id = 'notification-id';
+```
